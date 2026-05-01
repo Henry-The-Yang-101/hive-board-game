@@ -21,6 +21,7 @@ export function LobbyClient({ lobbyId }: Props) {
   const [message, setMessage] = useState("Connecting...");
   const [myColor, setMyColor] = useState<PlayerColor | null>(null);
   const [selectedPieceId, setSelectedPieceId] = useState<string | null>(null);
+  const [interactionMode, setInteractionMode] = useState<"place" | "move">("place");
   const [roleReady, setRoleReady] = useState(false);
   const sessionFallbackUsed = useRef(false);
 
@@ -41,6 +42,7 @@ export function LobbyClient({ lobbyId }: Props) {
     const onState = (payload: LobbySnapshot) => {
       setState(payload.state);
       applyRoleFromSnapshot(payload);
+      setSelectedPieceId(null);
       setRoleReady(true);
     };
 
@@ -96,6 +98,11 @@ export function LobbyClient({ lobbyId }: Props) {
   const placeAt = (q: number, r: number) => play({ kind: "place", pieceType: selected, to: { q, r } });
   const moveTo = (pieceId: string, q: number, r: number) => play({ kind: "move", pieceId, to: { q, r } });
   const pass = () => play({ kind: "pass" });
+  const selectPieceType = (pieceType: PieceType) => {
+    setSelected(pieceType);
+    setInteractionMode("place");
+    setSelectedPieceId(null);
+  };
 
   const youLabel = !roleReady ? "…" : (myColor ?? "spectator");
   const canPass = myColor ? state.turn === myColor && !playerHasAnyMove(state, myColor) : false;
@@ -115,15 +122,33 @@ export function LobbyClient({ lobbyId }: Props) {
       </header>
       <p className="message">{message}</p>
       <div className="boardActions">
-        <button onClick={() => setSelectedPieceId(null)} disabled={!selectedPieceId}>Placement mode</button>
+        <button
+          onClick={() => {
+            setInteractionMode("place");
+            setSelectedPieceId(null);
+          }}
+          className={interactionMode === "place" ? "activeAction" : ""}
+        >
+          Placement mode
+        </button>
+        <button
+          onClick={() => {
+            setInteractionMode("move");
+            setSelectedPieceId(null);
+          }}
+          className={interactionMode === "move" ? "activeAction" : ""}
+        >
+          Move mode
+        </button>
         <button onClick={pass} disabled={!canPass}>Pass</button>
       </div>
       <HiveBoard
         state={state}
         myColor={myColor}
+        interactionMode={interactionMode}
         selectedPieceType={selected}
         selectedPieceId={selectedPieceId}
-        onSelectPieceType={setSelected}
+        onSelectPieceType={selectPieceType}
         onSelectPieceId={setSelectedPieceId}
         onPlace={placeAt}
         onMove={moveTo}

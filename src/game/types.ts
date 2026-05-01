@@ -19,6 +19,7 @@ export type GameStatus = "active" | "white_won" | "black_won" | "draw";
 export type GameState = {
   turn: PlayerColor;
   turnNumber: number;
+  pieceSeq: number;
   status: GameStatus;
   board: Record<string, Piece[]>;
   hands: Record<PlayerColor, Record<PieceType, number>>;

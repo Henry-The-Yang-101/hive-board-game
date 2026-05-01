@@ -8,6 +8,7 @@ import { InsectIcon } from "@/components/icons/InsectIcon";
 type Props = {
   state: GameState;
   myColor: PlayerColor | null;
+  interactionMode: "place" | "move";
   selectedPieceType: PieceType;
   selectedPieceId: string | null;
   onSelectPieceType: (piece: PieceType) => void;
@@ -30,6 +31,7 @@ function axialToPixel(q: number, r: number): { x: number; y: number } {
 export function HiveBoard({
   state,
   myColor,
+  interactionMode,
   selectedPieceType,
   selectedPieceId,
   onSelectPieceType,
@@ -45,16 +47,17 @@ export function HiveBoard({
   const legalPlacements = useMemo(() => {
     if (!myColor) return new Set<string>();
     if (state.turn !== myColor) return new Set<string>();
-    if (selectedPieceId) return new Set<string>();
+    if (interactionMode !== "place") return new Set<string>();
     return legalPlacementTargets(state, myColor);
-  }, [myColor, selectedPieceId, state]);
+  }, [interactionMode, myColor, state]);
 
   const legalMovesForSelected = useMemo(() => {
     if (!myColor) return new Set<string>();
     if (state.turn !== myColor) return new Set<string>();
+    if (interactionMode !== "move") return new Set<string>();
     if (!selectedPieceId) return new Set<string>();
     return legalMoveTargets(state, selectedPieceId);
-  }, [myColor, selectedPieceId, state]);
+  }, [interactionMode, myColor, selectedPieceId, state]);
 
   const cameraCenter = useMemo(() => coordFromPixelPointyTop(-pan.x, -pan.y, HEX_R), [pan.x, pan.y]);
   const windowCells = useMemo(() => axialDisk(cameraCenter, 7), [cameraCenter]);
@@ -92,7 +95,8 @@ export function HiveBoard({
   const onCellClick = (q: number, r: number, cellKey: string) => {
     if (!myColor) return;
     if (state.turn !== myColor) return;
-    if (selectedPieceId) {
+    if (interactionMode === "move") {
+      if (!selectedPieceId) return;
       if (legalMovesForSelected.has(cellKey)) onMove(selectedPieceId, q, r);
       return;
     }
@@ -102,6 +106,7 @@ export function HiveBoard({
   const onPieceClick = (pieceId: string) => {
     if (!myColor) return;
     if (state.turn !== myColor) return;
+    if (interactionMode !== "move") return;
     onSelectPieceId(pieceId);
   };
 

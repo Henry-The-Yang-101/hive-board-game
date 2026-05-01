@@ -29,6 +29,7 @@ export function initialState(): GameState {
   return {
     turn: "white",
     turnNumber: 1,
+    pieceSeq: 1,
     status: "active",
     board: {},
     hands: { white: { ...BASE_HAND }, black: { ...BASE_HAND } },
@@ -264,7 +265,8 @@ export function applyAction(state: GameState, player: PlayerColor, action: Actio
   if (action.kind === "pass") {
     // no-op on board/hands
   } else if (action.kind === "place") {
-    const id = `${player}-${action.pieceType}-${next.turnNumber}-${Math.random().toString(36).slice(2, 8)}`;
+    const id = `${player}-${action.pieceType}-${next.pieceSeq}`;
+    next.pieceSeq += 1;
     const key = coordKey(action.to);
     next.board[key] = [...(next.board[key] ?? []), { id, owner: player, type: action.pieceType }];
     next.hands[player][action.pieceType] -= 1;
