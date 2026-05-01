@@ -18,6 +18,13 @@ export const parseKey = (key: string): HexCoord => {
 const other = (p: PlayerColor): PlayerColor => (p === "white" ? "black" : "white");
 const add = (a: HexCoord, b: HexCoord): HexCoord => ({ q: a.q + b.q, r: a.r + b.r });
 
+function axialDistance(a: HexCoord, b: HexCoord): number {
+  const dq = a.q - b.q;
+  const dr = a.r - b.r;
+  const ds = (a.q + a.r) - (b.q + b.r);
+  return Math.max(Math.abs(dq), Math.abs(dr), Math.abs(ds));
+}
+
 export function initialState(): GameState {
   return {
     turn: "white",
@@ -40,6 +47,10 @@ function occupied(board: GameState["board"], c: HexCoord): boolean {
 
 function neighbors(c: HexCoord): HexCoord[] {
   return DIRECTIONS.map((d) => add(c, d));
+}
+
+function touchesHive(board: GameState["board"], c: HexCoord): boolean {
+  return neighbors(c).some((n) => occupied(board, n));
 }
 
 function hasOwnQueenPlaced(state: GameState, player: PlayerColor): boolean {
@@ -82,7 +93,17 @@ function gateOpen(board: GameState["board"], from: HexCoord, to: HexCoord): bool
   return !(occupied(board, l) && occupied(board, r));
 }
 
-function legalPlacementTargets(state: GameState, player: PlayerColor): Set<string> {
+function isPinnedByTightGate(board: GameState["board"], from: HexCoord): boolean {
+  // If all exits are blocked by tight gates, piece cannot slide out.
+  // Beetles and grasshoppers bypass this (handled in their own movement rules).
+  for (const n of neighbors(from)) {
+    if (occupied(board, n)) continue;
+    if (gateOpen(board, from, n)) return false;
+  }
+  return true;
+}
+
+export function legalPlacementTargets(state: GameState, player: PlayerColor): Set<string> {
   const out = new Set<string>();
   const cells = boardNodes(state.board);
   if (cells.length === 0) {
@@ -107,9 +128,13 @@ function legalPlacementTargets(state: GameState, player: PlayerColor): Set<strin
   return out;
 }
 
-function crawlTargets(state: GameState, from: HexCoord, maxSteps?: number, exactSteps?: number): Set<string> {
+function crawlTargets(
+  state: GameState,
+  from: HexCoord,
+  maxSteps?: number,
+  exactSteps?: number
+): Set<string> {
   const out = new Set<string>();
-  const seen = new Set<string>([coordKey(from)]);
   const queue: Array<{ at: HexCoord; steps: number; visited: Set<string> }> = [
     { at: from, steps: 0, visited: new Set([coordKey(from)]) }
   ];
@@ -120,6 +145,8 @@ function crawlTargets(state: GameState, from: HexCoord, maxSteps?: number, exact
       if (occupied(state.board, n)) continue;
       if (!gateOpen(state.board, cur.at, n)) continue;
       if (cur.visited.has(k)) continue;
+      // Perimeter crawling: every intermediate step must stay in contact with the hive.
+      if (!touchesHive(state.board, n)) continue;
       const nextSteps = cur.steps + 1;
       if (exactSteps && nextSteps === exactSteps) {
         out.add(k);
@@ -130,7 +157,6 @@ function crawlTargets(state: GameState, from: HexCoord, maxSteps?: number, exact
       const nextVisited = new Set(cur.visited);
       nextVisited.add(k);
       queue.push({ at: n, steps: nextSteps, visited: nextVisited });
-      seen.add(k);
     }
   }
   if (exactSteps) {
@@ -156,13 +182,15 @@ function withPieceLifted(state: GameState, at: HexCoord): GameState {
   return lifted;
 }
 
-function legalMoveTargets(state: GameState, pieceId: string): Set<string> {
+export function legalMoveTargets(state: GameState, pieceId: string): Set<string> {
   const lookup = movableTopPiece(state, pieceId);
   if (!lookup) return new Set();
   const lifted = withPieceLifted(state, lookup.at);
   if (!connected(lifted.board)) return new Set();
+  const fromPinned = isPinnedByTightGate(lifted.board, lookup.at);
   switch (lookup.piece.type) {
     case "queen":
+      if (fromPinned) return new Set();
       return new Set(Array.from(crawlTargets(lifted, lookup.at, 1)).filter((k) => !occupied(lifted.board, parseKey(k))));
     case "beetle": {
       const out = new Set<string>();
@@ -185,8 +213,10 @@ function legalMoveTargets(state: GameState, pieceId: string): Set<string> {
       return out;
     }
     case "spider":
+      if (fromPinned) return new Set();
       return crawlTargets(lifted, lookup.at, undefined, 3);
     case "ant":
+      if (fromPinned) return new Set();
       return crawlTargets(lifted, lookup.at);
     default:
       return new Set();
@@ -196,6 +226,10 @@ function legalMoveTargets(state: GameState, pieceId: string): Set<string> {
 export function canApply(state: GameState, player: PlayerColor, action: Action): { ok: boolean; reason?: string } {
   if (state.status !== "active") return { ok: false, reason: "Game has ended." };
   if (player !== state.turn) return { ok: false, reason: "Not your turn." };
+  if (action.kind === "pass") {
+    if (availableMoves(state, player).length > 0) return { ok: false, reason: "You have a legal move." };
+    return { ok: true };
+  }
   if (action.kind === "place") {
     if (state.hands[player][action.pieceType] <= 0) return { ok: false, reason: "Piece unavailable." };
     if (state.movesByPlayer[player] >= 3 && !hasOwnQueenPlaced(state, player) && action.pieceType !== "queen") {
@@ -227,7 +261,9 @@ function queenSurrounded(state: GameState, player: PlayerColor): boolean {
 
 export function applyAction(state: GameState, player: PlayerColor, action: Action): GameState {
   const next = cloneState(state);
-  if (action.kind === "place") {
+  if (action.kind === "pass") {
+    // no-op on board/hands
+  } else if (action.kind === "place") {
     const id = `${player}-${action.pieceType}-${next.turnNumber}-${Math.random().toString(36).slice(2, 8)}`;
     const key = coordKey(action.to);
     next.board[key] = [...(next.board[key] ?? []), { id, owner: player, type: action.pieceType }];
@@ -264,4 +300,40 @@ export function availableMoves(state: GameState, player: PlayerColor): Action[] 
     for (const key of legalMoveTargets(state, top.id)) actions.push({ kind: "move", pieceId: top.id, to: parseKey(key) });
   }
   return actions;
+}
+
+export function playerHasAnyMove(state: GameState, player: PlayerColor): boolean {
+  return availableMoves(state, player).length > 0;
+}
+
+export function coordFromPixelPointyTop(x: number, y: number, hexR: number): HexCoord {
+  // Inverse of pointy-top axialToPixel:
+  // x = R*sqrt(3)*(q + r/2)
+  // y = R*(3/2)*r
+  const r = (2 / 3) * (y / hexR);
+  const q = (x / (hexR * Math.sqrt(3))) - r / 2;
+  // cube rounding
+  let cx = q;
+  let cz = r;
+  let cy = -cx - cz;
+  let rx = Math.round(cx);
+  let ry = Math.round(cy);
+  let rz = Math.round(cz);
+  const xDiff = Math.abs(rx - cx);
+  const yDiff = Math.abs(ry - cy);
+  const zDiff = Math.abs(rz - cz);
+  if (xDiff > yDiff && xDiff > zDiff) rx = -ry - rz;
+  else if (yDiff > zDiff) ry = -rx - rz;
+  else rz = -rx - ry;
+  return { q: rx, r: rz };
+}
+
+export function axialDisk(center: HexCoord, radius: number): HexCoord[] {
+  const out: HexCoord[] = [];
+  for (let dq = -radius; dq <= radius; dq += 1) {
+    for (let dr = Math.max(-radius, -dq - radius); dr <= Math.min(radius, -dq + radius); dr += 1) {
+      out.push({ q: center.q + dq, r: center.r + dr });
+    }
+  }
+  return out;
 }

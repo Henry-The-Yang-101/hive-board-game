@@ -11,7 +11,8 @@ export type Piece = {
 
 export type Action =
   | { kind: "place"; pieceType: PieceType; to: HexCoord }
-  | { kind: "move"; pieceId: string; to: HexCoord };
+  | { kind: "move"; pieceId: string; to: HexCoord }
+  | { kind: "pass" };
 
 export type GameStatus = "active" | "white_won" | "black_won" | "draw";
 

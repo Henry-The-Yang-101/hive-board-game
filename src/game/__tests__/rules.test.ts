@@ -22,4 +22,10 @@ describe("hive rules", () => {
     const result = canApply(s, "white", { kind: "move", pieceId: antId, to: { q: -1, r: 0 } });
     expect(result.ok).toBe(false);
   });
+
+  it("allows passing only when no legal move exists", () => {
+    let s = initialState();
+    const pass1 = canApply(s, "white", { kind: "pass" });
+    expect(pass1.ok).toBe(false);
+  });
 });

@@ -5,7 +5,7 @@ import { HiveBoard } from "@/components/board/HiveBoard";
 import { clearHiveSession, COLOR_KEY, LOBBY_KEY, SESSION_KEY } from "@/lib/hiveSession";
 import { socket } from "@/lib/socket";
 import { Action, GameState, PieceType, PlayerColor } from "@/game/types";
-import { initialState } from "@/game/rules";
+import { initialState, playerHasAnyMove } from "@/game/rules";
 
 type Props = { lobbyId: string };
 
@@ -20,6 +20,7 @@ export function LobbyClient({ lobbyId }: Props) {
   const [selected, setSelected] = useState<PieceType>("queen");
   const [message, setMessage] = useState("Connecting...");
   const [myColor, setMyColor] = useState<PlayerColor | null>(null);
+  const [selectedPieceId, setSelectedPieceId] = useState<string | null>(null);
   const [roleReady, setRoleReady] = useState(false);
   const sessionFallbackUsed = useRef(false);
 
@@ -93,8 +94,11 @@ export function LobbyClient({ lobbyId }: Props) {
 
   const play = (action: Action) => socket.emit("playAction", { lobbyId, action });
   const placeAt = (q: number, r: number) => play({ kind: "place", pieceType: selected, to: { q, r } });
+  const moveTo = (pieceId: string, q: number, r: number) => play({ kind: "move", pieceId, to: { q, r } });
+  const pass = () => play({ kind: "pass" });
 
   const youLabel = !roleReady ? "…" : (myColor ?? "spectator");
+  const canPass = myColor ? state.turn === myColor && !playerHasAnyMove(state, myColor) : false;
 
   return (
     <main className="container">
@@ -110,7 +114,20 @@ export function LobbyClient({ lobbyId }: Props) {
         </div>
       </header>
       <p className="message">{message}</p>
-      <HiveBoard state={state} selectedPieceType={selected} onSelectPieceType={setSelected} onPlace={placeAt} />
+      <div className="boardActions">
+        <button onClick={() => setSelectedPieceId(null)} disabled={!selectedPieceId}>Placement mode</button>
+        <button onClick={pass} disabled={!canPass}>Pass</button>
+      </div>
+      <HiveBoard
+        state={state}
+        myColor={myColor}
+        selectedPieceType={selected}
+        selectedPieceId={selectedPieceId}
+        onSelectPieceType={setSelected}
+        onSelectPieceId={setSelectedPieceId}
+        onPlace={placeAt}
+        onMove={moveTo}
+      />
     </main>
   );
 }
