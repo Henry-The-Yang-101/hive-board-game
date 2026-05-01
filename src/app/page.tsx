@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { COLOR_KEY, LOBBY_KEY, SESSION_KEY } from "@/lib/hiveSession";
 import { socket } from "@/lib/socket";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
@@ -12,7 +13,12 @@ export default function HomePage() {
 
   const createLobby = () => {
     socket.emit("createLobby");
-    socket.once("lobbyCreated", ({ lobbyId }) => router.push(`/lobby/${lobbyId}`));
+    socket.once("lobbyCreated", ({ lobbyId, sessionId, color }) => {
+      localStorage.setItem(SESSION_KEY, sessionId);
+      localStorage.setItem(COLOR_KEY, color);
+      localStorage.setItem(LOBBY_KEY, lobbyId);
+      router.push(`/lobby/${lobbyId}`);
+    });
     socket.once("errorMessage", ({ message }) => setError(message));
   };
 

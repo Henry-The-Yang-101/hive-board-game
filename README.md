@@ -20,6 +20,10 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+## Sessions and dev restarts
+
+Lobbies live in server memory. After you stop and start `npm run dev`, old browser session data may be invalid; the client will clear it and join the lobby again when possible. If that lobby no longer exists, create a new one.
+
 ## Rules Implemented
 
 - Queen must be placed by each player's fourth turn

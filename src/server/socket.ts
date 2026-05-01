@@ -1,6 +1,6 @@
 import { Server } from "socket.io";
 import { Action, PlayerColor } from "../game/types";
-import { cleanupStale, getLobby, joinLobby, newLobby, reconnectLobby, removeSocket, SESSION_COOKIE, snapshot } from "./lobbies";
+import { cleanupStale, getLobby, joinLobby, newLobby, reconnectLobby, removeSocket, snapshot } from "./lobbies";
 
 type ClientToServerEvents = {
   createLobby: () => void;
@@ -13,7 +13,7 @@ type ServerToClientEvents = {
   lobbyCreated: (payload: { lobbyId: string; sessionId: string; color: PlayerColor }) => void;
   lobbyJoined: (payload: { sessionId: string; color: PlayerColor }) => void;
   state: (payload: ReturnType<typeof snapshot>) => void;
-  errorMessage: (payload: { message: string }) => void;
+  errorMessage: (payload: { message: string; code?: string }) => void;
 };
 
 export function registerSocketHandlers(io: Server<ClientToServerEvents, ServerToClientEvents>) {
@@ -29,19 +29,22 @@ export function registerSocketHandlers(io: Server<ClientToServerEvents, ServerTo
 
     socket.on("joinLobby", ({ lobbyId }) => {
       const result = joinLobby(lobbyId, socket.id);
-      if (!result.lobby || !result.sessionId) {
+      if (!result.lobby || !result.sessionId || !result.color) {
         socket.emit("errorMessage", { message: result.reason ?? "Unable to join lobby." });
         return;
       }
       socket.join(result.lobby.id);
-      socket.emit("lobbyJoined", { sessionId: result.sessionId, color: "black" });
+      socket.emit("lobbyJoined", { sessionId: result.sessionId, color: result.color });
       io.to(result.lobby.id).emit("state", snapshot(result.lobby));
     });
 
     socket.on("reconnectLobby", ({ lobbyId, sessionId }) => {
       const lobby = reconnectLobby(lobbyId, sessionId, socket.id);
       if (!lobby) {
-        socket.emit("errorMessage", { message: `Session expired. Clear ${SESSION_COOKIE} and rejoin.` });
+        socket.emit("errorMessage", {
+          code: "session_invalid",
+          message: "This lobby or session is no longer valid (for example after a server restart). Join again as a new player."
+        });
         return;
       }
       socket.join(lobbyId);

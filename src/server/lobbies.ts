@@ -12,7 +12,6 @@ export type Lobby = {
 };
 
 const lobbies = new Map<string, Lobby>();
-const SESSION_COOKIE = "hive_session";
 
 export function newLobby(hostSocketId: string): { lobby: Lobby; sessionId: string } {
   const id = crypto.randomBytes(9).toString("base64url");
@@ -28,14 +27,22 @@ export function newLobby(hostSocketId: string): { lobby: Lobby; sessionId: strin
   return { lobby, sessionId };
 }
 
-export function joinLobby(lobbyId: string, socketId: string): { lobby?: Lobby; sessionId?: string; reason?: string } {
+export function joinLobby(
+  lobbyId: string,
+  socketId: string
+): { lobby?: Lobby; sessionId?: string; color?: PlayerColor; reason?: string } {
   const lobby = lobbies.get(lobbyId);
   if (!lobby) return { reason: "Lobby not found." };
+  const existing = lobby.players.find((p) => p.socketId === socketId);
+  if (existing) {
+    lobby.updatedAt = Date.now();
+    return { lobby, sessionId: existing.sessionId, color: existing.color };
+  }
   if (lobby.players.length >= 2) return { reason: "Lobby is full." };
   const sessionId = crypto.randomBytes(12).toString("hex");
   lobby.players.push({ socketId, sessionId, color: "black" });
   lobby.updatedAt = Date.now();
-  return { lobby, sessionId };
+  return { lobby, sessionId, color: "black" };
 }
 
 export function getLobby(lobbyId: string): Lobby | undefined {
@@ -70,4 +77,3 @@ export function cleanupStale(maxAgeMs = 1000 * 60 * 60): void {
   }
 }
 
-export { SESSION_COOKIE };

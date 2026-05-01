@@ -13,16 +13,43 @@ type Props = {
 
 const PIECES: PieceType[] = ["queen", "ant", "spider", "beetle", "grasshopper"];
 
+/** Pointy-top hex: distance from center to each vertex (px). */
+const HEX_R = 28;
+
+function axialToPixel(q: number, r: number): { x: number; y: number } {
+  const x = HEX_R * Math.sqrt(3) * (q + r / 2);
+  const y = HEX_R * (3 / 2) * r;
+  return { x, y };
+}
+
 export function HiveBoard({ state, selectedPieceType, onSelectPieceType, onPlace }: Props) {
   const occupied = Object.keys(state.board).map(parseKey);
-  const minQ = Math.min(-3, ...occupied.map((c) => c.q)) - 1;
-  const maxQ = Math.max(3, ...occupied.map((c) => c.q)) + 1;
-  const minR = Math.min(-3, ...occupied.map((c) => c.r)) - 1;
-  const maxR = Math.max(3, ...occupied.map((c) => c.r)) + 1;
-  const cells = [];
+  const minQ = Math.min(-2, ...occupied.map((c) => c.q)) - 1;
+  const maxQ = Math.max(2, ...occupied.map((c) => c.q)) + 1;
+  const minR = Math.min(-2, ...occupied.map((c) => c.r)) - 1;
+  const maxR = Math.max(2, ...occupied.map((c) => c.r)) + 1;
+  const cells: { q: number; r: number }[] = [];
   for (let r = minR; r <= maxR; r += 1) {
     for (let q = minQ; q <= maxQ; q += 1) cells.push({ q, r });
   }
+
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const c of cells) {
+    const { x, y } = axialToPixel(c.q, c.r);
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+  }
+  const pad = HEX_R * 2;
+  const width = maxX - minX + pad * 2;
+  const height = maxY - minY + pad * 2;
+  const originX = -minX + pad;
+  const originY = -minY + pad;
+
   return (
     <div className="boardWrap">
       <div className="tray">
@@ -34,14 +61,29 @@ export function HiveBoard({ state, selectedPieceType, onSelectPieceType, onPlace
           </button>
         ))}
       </div>
-      <div className="grid">
+      <div className="hexField" style={{ width, height }}>
         {cells.map((c) => {
           const stack = state.board[coordKey(c)] ?? [];
           const top = stack[stack.length - 1];
+          const { x, y } = axialToPixel(c.q, c.r);
+          const left = originX + x;
+          const topPx = originY + y;
           return (
-            <button key={coordKey(c)} className={`hex ${top ? "occupied" : ""}`} onClick={() => onPlace(c.q, c.r)}>
+            <button
+              key={coordKey(c)}
+              type="button"
+              className={`hexCell ${top ? "occupied" : ""}`}
+              style={{
+                left,
+                top: topPx,
+                width: HEX_R * Math.sqrt(3),
+                height: HEX_R * 2,
+                transform: "translate(-50%, -50%)"
+              }}
+              onClick={() => onPlace(c.q, c.r)}
+            >
               {top ? <InsectIcon type={top.type} className="icon" /> : null}
-              <small>{stack.length > 1 ? stack.length : ""}</small>
+              {stack.length > 1 ? <span className="stackCount">{stack.length}</span> : null}
             </button>
           );
         })}
