@@ -20,11 +20,11 @@ const MARKER_R  = 0.70;
 const MARKER_H  = 0.07;
 const INSECT_ON_PIECE_SCALE = 0.75;
 
-// ─── Color palette (matches CSS theme) ──────────────────────────────────────
-const W_SIDE  = new THREE.Color(0xdce4f5);
-const B_SIDE  = new THREE.Color(0x1c2235);
+// ─── Color palette (matches CSS theme — warm neutrals + accent) ───────────────
+const W_SIDE  = new THREE.Color(0xe8dfd2);
+const B_SIDE  = new THREE.Color(0x1f1b16);
 const W_TOP   = new THREE.Color(0xffffff);
-const ACCENT  = new THREE.Color(0x7f8cff);
+const ACCENT  = new THREE.Color(0xF7AE18);
 
 // ─── PNG path table ──────────────────────────────────────────────────────────
 const PNG: Record<PieceType, string> = {
@@ -224,7 +224,7 @@ function LegalMarker({ x, z, geo, onClick }: MarkerProps) {
 }
 
 // ─── Single hex prism piece ───────────────────────────────────────────────────
-const ACCENT_DIM = new THREE.Color(0x4a5acc);
+const ACCENT_DIM = new THREE.Color(0xc89214);
 
 type PieceProps = {
   pType: PieceType;
