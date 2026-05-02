@@ -9,14 +9,15 @@ import { GameState, PieceType, PlayerColor } from "@/game/types";
 import { coordKey, legalMoveTargets, legalPlacementTargets, parseKey } from "@/game/rules";
 
 // ─── Layout constants ───────────────────────────────────────────────────────
-const HEX_R     = 1.0;   // world-space hex circumradius
-const HEX_SCALE = 0.91;  // slight gap between pieces
-const PIECE_H   = 0.44;  // height of one stacked piece prism
-const STACK_GAP = 0.04;  // vertical gap between stacked pieces
-const MARKER_R  = 0.70;  // radius of legal-move highlight disc
+const HEX_R     = 1.0;
+const HEX_SCALE = 0.951;
+const HEX_MESH_Y_ROT = Math.PI / 6;
+const HEX_TILE_GAP = 0.05;
+const PIECE_H   = 0.55;
+const PIECE_EDGE_BEVEL = 0.026 * 1.8;
+const STACK_GAP = 0.05;
+const MARKER_R  = 0.70;
 const MARKER_H  = 0.07;
-
-/** Linear scale of insect art on piece tops (1 = edge-to-edge within square). */
 const INSECT_ON_PIECE_SCALE = 0.75;
 
 // ─── Color palette (matches CSS theme) ──────────────────────────────────────
@@ -38,11 +39,83 @@ const PIECE_TYPES: PieceType[] = ["queen", "ant", "spider", "beetle", "grasshopp
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 function axialToWorld(q: number, r: number): [number, number, number] {
+  const layoutR = HEX_R + HEX_TILE_GAP / Math.sqrt(3);
   return [
-    HEX_R * Math.sqrt(3) * (q + r / 2),
+    layoutR * Math.sqrt(3) * (q + r / 2),
     0,
-    HEX_R * 1.5 * r,
+    layoutR * 1.5 * r,
   ];
+}
+
+/**
+ * ExtrudeGeometry lid UVs use raw shape coordinates (~±radius), outside [0,1]; textures clamp and look
+ * shrunk / shifted. Cylinder caps use normalized UVs — remap top-cap verts (after rotateX) from xz so
+ * the insect canvas maps like before.
+ */
+function remapTopCapUVsCylinderStyle(
+  geo: THREE.BufferGeometry,
+  vertexStart: number,
+  vertexCount: number,
+): void {
+  const pos = geo.getAttribute("position") as THREE.BufferAttribute;
+  const uvAttr = geo.getAttribute("uv") as THREE.BufferAttribute;
+  const end = vertexStart + vertexCount;
+  let m = 1e-6;
+  for (let vi = vertexStart; vi < end; vi++) {
+    const x = pos.getX(vi);
+    const z = pos.getZ(vi);
+    m = Math.max(m, Math.abs(x), Math.abs(z));
+  }
+  const inv = 1 / (2 * m);
+  for (let vi = vertexStart; vi < end; vi++) {
+    const x = pos.getX(vi);
+    const z = pos.getZ(vi);
+    uvAttr.setXY(vi, z * inv + 0.5, x * inv + 0.5);
+  }
+  uvAttr.needsUpdate = true;
+}
+
+function createRoundedHexPieceGeometry(): THREE.BufferGeometry {
+  const r = HEX_R * HEX_SCALE;
+  const shape = new THREE.Shape();
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const x = r * Math.cos(a);
+    const y = r * Math.sin(a);
+    if (i === 0) shape.moveTo(x, y);
+    else shape.lineTo(x, y);
+  }
+  shape.closePath();
+
+  const geo = new THREE.ExtrudeGeometry(shape, {
+    depth: PIECE_H - 2 * PIECE_EDGE_BEVEL,
+    steps: 1,
+    curveSegments: 1,
+    bevelEnabled: true,
+    bevelThickness: PIECE_EDGE_BEVEL,
+    bevelSize: PIECE_EDGE_BEVEL * 0.9,
+    bevelOffset: 0,
+    bevelSegments: 5,
+  });
+
+  geo.rotateX(-Math.PI / 2);
+  geo.computeBoundingBox();
+  const box = geo.boundingBox!;
+  geo.translate(0, -(box.max.y + box.min.y) / 2, 0);
+
+  const lids = geo.groups[0];
+  const sides = geo.groups[1];
+  const bottomHalf = lids.count / 2;
+  const topStart = lids.start + bottomHalf;
+  geo.clearGroups();
+  geo.addGroup(lids.start, bottomHalf, 2);
+  geo.addGroup(topStart, bottomHalf, 1);
+  geo.addGroup(sides.start, sides.count, 0);
+
+  remapTopCapUVsCylinderStyle(geo, topStart, bottomHalf);
+
+  geo.computeVertexNormals();
+  return geo;
 }
 
 /**
@@ -151,7 +224,7 @@ function HexPiece({
   const emissiveInt = isSelected ? 0.45   : isLegalTarget ? 0.55        : 0;
 
   return (
-    <group position={[wx, y, wz]}>
+    <group position={[wx, y, wz]} rotation={[0, HEX_MESH_Y_ROT, 0]}>
       <mesh
         geometry={geo}
         onClick={isTop ? (e) => { e.stopPropagation(); onPieceClick(); } : undefined}
@@ -217,9 +290,8 @@ function HiveScene({
     Object.fromEntries(PIECE_TYPES.map(t => [t, processTexture(rawMap[t], true)])) as Record<PieceType, THREE.Texture>,
   [rawMap]);
 
-  // Shared geometries
-  const pieceGeo  = useMemo(() =>
-    new THREE.CylinderGeometry(HEX_R * HEX_SCALE, HEX_R * HEX_SCALE, PIECE_H, 6, 1), []);
+  // Shared geometries (extruded hex + bevel for slight rim rounding)
+  const pieceGeo  = useMemo(() => createRoundedHexPieceGeometry(), []);
   const markerGeo = useMemo(() =>
     new THREE.CylinderGeometry(MARKER_R, MARKER_R, MARKER_H, 6, 1), []);
 
