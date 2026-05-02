@@ -6,15 +6,10 @@ Play the deployed game with a friend at [https://hive-board-game.vercel.app/](ht
 
 ## Features
 
-- **Private Lobbies**: Create unguessable links to invite friends.
+- **Private Lobbies**: Create links to invite friends.
 - **Real-time Gameplay**: Powered by PartyKit for low-latency synchronization.
 - **Responsive 3D Board**: Immersive Three.js/React Three Fiber board that works on desktop and mobile.
 - **Mobile Optimized**: Bottom-sheet controls and adaptive layout for smaller screens.
-- **UI/UX Polish**:
-  - Montserrat typography for a modern look.
-  - Light/dark theme toggle with persistent settings.
-  - Toolbar with "Leave Lobby" and "Copy Link" functionality.
-  - Simplified "Move" and "Place" tool hierarchy.
 - **Base Hive Insects**: Queen Bee, Soldier Ant, Spider, Beetle, Grasshopper.
 - **Server-Authoritative**: Game state and rule validation handled on the server.
 
