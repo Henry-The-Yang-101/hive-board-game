@@ -4,7 +4,6 @@ import { Suspense, useMemo, useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, useTexture } from "@react-three/drei";
 import * as THREE from "three";
-import Image from "next/image";
 import { GameState, PieceType, PlayerColor } from "@/game/types";
 import { coordKey, legalMoveTargets, legalPlacementTargets, parseKey } from "@/game/rules";
 
@@ -387,14 +386,14 @@ function HiveScene({
   );
 }
 
+export type HiveTool = PieceType | "move";
+
 // ─── Board component props ────────────────────────────────────────────────────
 type BoardProps = {
   state: GameState;
   myColor: PlayerColor | null;
-  interactionMode: "place" | "move";
-  selectedPieceType: PieceType;
+  tool: HiveTool;
   selectedPieceId: string | null;
-  onSelectPieceType: (t: PieceType) => void;
   onSelectPieceId: (id: string | null) => void;
   onPlace: (q: number, r: number) => void;
   onMove: (pieceId: string, q: number, r: number) => void;
@@ -402,26 +401,27 @@ type BoardProps = {
 
 // ─── Exported board ──────────────────────────────────────────────────────────
 export function HiveBoard3D({
-  state, myColor, interactionMode,
-  selectedPieceType, selectedPieceId,
-  onSelectPieceType, onSelectPieceId,
+  state, myColor, tool,
+  selectedPieceId,
+  onSelectPieceId,
   onPlace, onMove,
 }: BoardProps) {
   const isMyTurn = myColor !== null && state.turn === myColor;
+  const placementTool = tool === "move" ? null : tool;
 
   const legalPlacements = useMemo(() => {
-    if (!isMyTurn || interactionMode !== "place") return new Set<string>();
+    if (!isMyTurn || placementTool === null) return new Set<string>();
     return legalPlacementTargets(state, myColor!);
-  }, [isMyTurn, interactionMode, myColor, state]);
+  }, [isMyTurn, placementTool, myColor, state]);
 
   const legalMovesForSelected = useMemo(() => {
-    if (!isMyTurn || interactionMode !== "move" || !selectedPieceId) return new Set<string>();
+    if (!isMyTurn || tool !== "move" || !selectedPieceId) return new Set<string>();
     return legalMoveTargets(state, selectedPieceId);
-  }, [isMyTurn, interactionMode, selectedPieceId, state]);
+  }, [isMyTurn, tool, selectedPieceId, state]);
 
   const onCellClick = (q: number, r: number, key: string) => {
     if (!isMyTurn) return;
-    if (interactionMode === "move") {
+    if (tool === "move") {
       if (selectedPieceId && legalMovesForSelected.has(key)) onMove(selectedPieceId, q, r);
     } else {
       if (legalPlacements.has(key)) onPlace(q, r);
@@ -429,39 +429,13 @@ export function HiveBoard3D({
   };
 
   const onPieceClick = (pieceId: string) => {
-    if (!isMyTurn || interactionMode !== "move") return;
+    if (!isMyTurn || tool !== "move") return;
     onSelectPieceId(pieceId);
   };
 
   return (
-    <div className="boardWrap">
-      {/* ── Piece tray ─────────────────────────────────────────────────── */}
-      <div className="tray">
-        {PIECE_TYPES.map(piece => {
-          const inHand = state.hands[state.turn][piece];
-          return (
-            <button
-              key={piece}
-              className={`trayBtn ${selectedPieceType === piece && interactionMode === "place" ? "active" : ""}`}
-              onClick={() => onSelectPieceType(piece)}
-            >
-              <Image
-                src={PNG[piece]}
-                alt={piece}
-                width={32}
-                height={32}
-                className="trayIcon"
-                style={{ objectFit: "contain" }}
-              />
-              <span className="trayLabel">{piece}</span>
-              <strong className="trayCount">{inHand}</strong>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ── 3D Canvas ──────────────────────────────────────────────────── */}
-      <div className="canvasWrapper">
+    <div className="hiveBoardRoot">
+      <div className="canvasWrapper hiveCanvasFill">
         <Canvas
           camera={{ position: [0, 13, 11], fov: 48 }}
           gl={{ alpha: true, antialias: true }}

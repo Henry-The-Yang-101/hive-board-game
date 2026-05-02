@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { HiveBoard3D } from "@/components/board/HiveBoard3D";
+import Image from "next/image";
+import { HiveBoard3D, type HiveTool } from "@/components/board/HiveBoard3D";
 import { clearHiveSession, COLOR_KEY, LOBBY_KEY, SESSION_KEY } from "@/lib/hiveSession";
 import { socket } from "@/lib/socket";
-import { Action, GameState, PieceType, PlayerColor } from "@/game/types";
+import { GameState, PieceType, PlayerColor } from "@/game/types";
 import { initialState, playerHasAnyMove } from "@/game/rules";
 
 type Props = { lobbyId: string };
@@ -15,15 +16,26 @@ type LobbySnapshot = {
   players: { sessionId: string; color: PlayerColor }[];
 };
 
+/** PNG tray icons (paths match HiveBoard3D PNG table). */
+const TRAY_IMG: Record<PieceType, string> = {
+  queen: "/images/insects/queen_bee.png",
+  ant: "/images/insects/soldier_ant.png",
+  spider: "/images/insects/spider.png",
+  beetle: "/images/insects/beetle.png",
+  grasshopper: "/images/insects/grasshopper.png",
+};
+
+const SIDE_PIECES: PieceType[] = ["queen", "ant", "spider", "beetle", "grasshopper"];
+
 export function LobbyClient({ lobbyId }: Props) {
   const [state, setState] = useState<GameState>(initialState());
-  const [selected, setSelected] = useState<PieceType>("queen");
+  const [tool, setTool] = useState<HiveTool>("queen");
   const [message, setMessage] = useState("Connecting...");
   const [myColor, setMyColor] = useState<PlayerColor | null>(null);
   const [selectedPieceId, setSelectedPieceId] = useState<string | null>(null);
-  const [interactionMode, setInteractionMode] = useState<"place" | "move">("place");
   const [roleReady, setRoleReady] = useState(false);
   const sessionFallbackUsed = useRef(false);
+  const lastAutoPassKey = useRef<string | null>(null);
 
   useEffect(() => {
     const storedLobby = typeof window !== "undefined" ? localStorage.getItem(LOBBY_KEY) : null;
@@ -94,65 +106,107 @@ export function LobbyClient({ lobbyId }: Props) {
     };
   }, [lobbyId]);
 
-  const play = (action: Action) => socket.emit("playAction", { lobbyId, action });
-  const placeAt = (q: number, r: number) => play({ kind: "place", pieceType: selected, to: { q, r } });
-  const moveTo = (pieceId: string, q: number, r: number) => play({ kind: "move", pieceId, to: { q, r } });
-  const pass = () => play({ kind: "pass" });
-  const selectPieceType = (pieceType: PieceType) => {
-    setSelected(pieceType);
-    setInteractionMode("place");
+  useEffect(() => {
+    if (!roleReady || !myColor || state.status !== "active") return;
+    if (state.turn !== myColor) return;
+    if (playerHasAnyMove(state, myColor)) return;
+    const marker = `${lobbyId}:${state.turnNumber}`;
+    if (lastAutoPassKey.current === marker) return;
+    lastAutoPassKey.current = marker;
+    socket.emit("playAction", { lobbyId, action: { kind: "pass" } });
+  }, [roleReady, myColor, lobbyId, state.status, state.turn, state.turnNumber]);
+
+  const placePieceType = tool === "move" ? null : tool;
+
+  const placeAt = (q: number, r: number) => {
+    if (placePieceType === null) return;
+    socket.emit("playAction", { lobbyId, action: { kind: "place", pieceType: placePieceType, to: { q, r } } });
+  };
+
+  const moveTo = (pieceId: string, q: number, r: number) => {
+    socket.emit("playAction", { lobbyId, action: { kind: "move", pieceId, to: { q, r } } });
+  };
+
+  const selectTool = (next: HiveTool) => {
+    setTool(next);
     setSelectedPieceId(null);
   };
 
   const youLabel = !roleReady ? "…" : (myColor ?? "spectator");
-  const canPass = myColor ? state.turn === myColor && !playerHasAnyMove(state, myColor) : false;
+  const canInteract = myColor !== null && state.turn === myColor && state.status === "active";
+
+  const handTurn = state.hands[state.turn];
 
   return (
-    <main className="container">
-      <header className="topBar">
-        <div>
-          <h1>Hive</h1>
-          <p>Lobby: {lobbyId}</p>
+    <main className="gameShell">
+      <aside className="gameSidebar">
+        <div className="sidebarInset">
+          <div className="sidebarStatus">
+          <h1 className="sidebarTitle">Hive</h1>
+          <p className="sidebarMeta">
+            Lobby <span className="sidebarMono">{lobbyId}</span>
+          </p>
+          <p className="sidebarMeta">Turn: {state.turn}</p>
+          <p className="sidebarMeta">Status: {state.status}</p>
+          <p className="sidebarMeta">
+            You: <span className="sidebarMono">{youLabel}</span>
+          </p>
+          <p className="message sidebarMessage">{message}</p>
         </div>
-        <div>
-          <p>Turn: {state.turn}</p>
-          <p>Status: {state.status}</p>
-          <p>You: {youLabel}</p>
+
+        <div className="sidebarTrayLabel">Choose action</div>
+        <div className="sidebarTray">
+          <button
+            type="button"
+            className={`trayBtn ${tool === "move" ? "active" : ""}`}
+            aria-pressed={tool === "move"}
+            disabled={!canInteract}
+            onClick={() => selectTool("move")}
+          >
+            <span className="trayMoveGlyph" aria-hidden>
+              ⇄
+            </span>
+            <span className="trayLabel">Move</span>
+          </button>
+          {SIDE_PIECES.map((piece) => {
+            const count = handTurn[piece];
+            return (
+              <button
+                key={piece}
+                type="button"
+                className={`trayBtn ${tool === piece ? "active" : ""}`}
+                aria-pressed={tool === piece}
+                disabled={!canInteract}
+                onClick={() => selectTool(piece)}
+              >
+                <Image
+                  src={TRAY_IMG[piece]}
+                  alt={piece}
+                  width={32}
+                  height={32}
+                  className="trayIcon"
+                  style={{ objectFit: "contain" }}
+                />
+                <span className="trayLabel">{piece}</span>
+                <strong className="trayCount">{count}</strong>
+              </button>
+            );
+          })}
         </div>
-      </header>
-      <p className="message">{message}</p>
-      <div className="boardActions">
-        <button
-          onClick={() => {
-            setInteractionMode("place");
-            setSelectedPieceId(null);
-          }}
-          className={interactionMode === "place" ? "activeAction" : ""}
-        >
-          Placement mode
-        </button>
-        <button
-          onClick={() => {
-            setInteractionMode("move");
-            setSelectedPieceId(null);
-          }}
-          className={interactionMode === "move" ? "activeAction" : ""}
-        >
-          Move mode
-        </button>
-        <button onClick={pass} disabled={!canPass}>Pass</button>
+        </div>
+      </aside>
+
+      <div className="gameBoardPane">
+        <HiveBoard3D
+          state={state}
+          myColor={myColor}
+          tool={tool}
+          selectedPieceId={selectedPieceId}
+          onSelectPieceId={setSelectedPieceId}
+          onPlace={placeAt}
+          onMove={moveTo}
+        />
       </div>
-      <HiveBoard3D
-        state={state}
-        myColor={myColor}
-        interactionMode={interactionMode}
-        selectedPieceType={selected}
-        selectedPieceId={selectedPieceId}
-        onSelectPieceType={selectPieceType}
-        onSelectPieceId={setSelectedPieceId}
-        onPlace={placeAt}
-        onMove={moveTo}
-      />
     </main>
   );
 }

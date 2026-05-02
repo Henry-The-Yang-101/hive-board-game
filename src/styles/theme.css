@@ -38,6 +38,88 @@ button { cursor: pointer; }
 .topBar { display: flex; justify-content: space-between; padding: 14px; border-radius: 12px; margin-bottom: 12px; }
 .message { color: var(--muted); }
 .boardWrap { display: grid; gap: 14px; }
+
+.gameShell {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: row;
+  background: radial-gradient(ellipse at calc(50% + min(150px, 19vw)) 22%, #1e2438 0%, #0f1117 72%);
+}
+.gameSidebar {
+  width: min(300px, 38vw);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  background: transparent;
+  overflow-y: auto;
+}
+.sidebarInset {
+  border: 1px solid color-mix(in oklab, var(--border) 42%, transparent);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.sidebarStatus {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+.sidebarTitle {
+  margin: 0 0 8px;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+.sidebarMeta {
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: var(--text);
+}
+.sidebarMono {
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+.sidebarMessage {
+  margin: 10px 0 0;
+  font-size: 13px;
+}
+.sidebarTrayLabel {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: -4px;
+}
+.sidebarTray {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.trayMoveGlyph {
+  font-size: 22px;
+  line-height: 1;
+}
+.gameBoardPane {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.hiveBoardRoot {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .canvasWrapper {
   width: 100%;
   height: 560px;
@@ -46,8 +128,23 @@ button { cursor: pointer; }
   background: radial-gradient(ellipse at 50% 20%, #1e2438 0%, #0f1117 70%);
   border: 1px solid var(--border);
 }
+
+.hiveCanvasFill {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+  border-radius: 0;
+  border: none;
+  background: transparent;
+}
 :root[data-theme="light"] .canvasWrapper {
   background: radial-gradient(ellipse at 50% 20%, #d4ddf5 0%, #e8edf8 70%);
+}
+:root[data-theme="light"] .canvasWrapper.hiveCanvasFill {
+  background: transparent;
+}
+:root[data-theme="light"] .gameShell {
+  background: radial-gradient(ellipse at calc(50% + min(150px, 19vw)) 22%, #d4ddf5 0%, #e8edf8 72%);
 }
 .boardActions { display: flex; gap: 10px; margin: 10px 0 14px; }
 .boardActions .activeAction { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
@@ -61,6 +158,10 @@ button { cursor: pointer; }
   gap: 4px;
 }
 .trayBtn.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.trayBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .trayIcon {
   width: 32px;
   height: 32px;
