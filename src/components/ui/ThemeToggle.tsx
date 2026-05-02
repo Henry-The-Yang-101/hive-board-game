@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 
 type Props = {
-  /** `"text"` keeps the old fixed home-page control; `"icon"` is sun/moon for the lobby sidebar. */
   variant?: "text" | "icon";
 };
 

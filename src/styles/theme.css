@@ -21,7 +21,6 @@ body {
   margin: 0;
   background: radial-gradient(circle at top, #1c2130, var(--bg) 40%);
   color: var(--text);
-  font-family: Inter, system-ui, sans-serif;
 }
 .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
 .home { min-height: 100vh; display: grid; place-items: center; }
