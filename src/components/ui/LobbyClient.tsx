@@ -164,7 +164,14 @@ export function LobbyClient({ lobbyId }: Props) {
     setSelectedPieceId(null);
   };
 
-  const youLabel = !roleReady ? "…" : (myColor ?? "spectator");
+  const colorLabel = (c: PlayerColor) => (c === "white" ? "White" : "Black");
+
+  let turnLine: string;
+  if (!roleReady) turnLine = "…";
+  else if (myColor === null) turnLine = `${colorLabel(state.turn)}'s turn`;
+  else if (myColor === state.turn) turnLine = `Your (${colorLabel(state.turn)}) turn`;
+  else turnLine = `Opponent's (${colorLabel(state.turn)}) turn`;
+
   const canInteract = myColor !== null && state.turn === myColor && state.status === "active";
 
   const handTurn = state.hands[state.turn];
@@ -230,14 +237,10 @@ export function LobbyClient({ lobbyId }: Props) {
             </div>
           </div>
           <div className="sidebarStatus">
-            <p className="sidebarMeta">
-              Lobby <span className="sidebarMono">{lobbyId}</span>
-            </p>
-            <p className="sidebarMeta">Turn: {state.turn}</p>
+            <p className="sidebarMeta">Lobby ID: <span className="sidebarMono">{lobbyId}</span></p>
+            <p className="sidebarMeta">Turn: {turnLine}</p>
+            <p className="sidebarMeta">Turn number: {state.turnNumber}</p>
             <p className="sidebarMeta">Status: {state.status}</p>
-            <p className="sidebarMeta">
-              You: <span className="sidebarMono">{youLabel}</span>
-            </p>
             <p className="message sidebarMessage">{message}</p>
           </div>
 
