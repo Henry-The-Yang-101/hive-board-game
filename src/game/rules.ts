@@ -195,8 +195,16 @@ export function legalMoveTargets(state: GameState, pieceId: string): Set<string>
       return new Set(Array.from(crawlTargets(lifted, lookup.at, 1)).filter((k) => !occupied(lifted.board, parseKey(k))));
     case "beetle": {
       const out = new Set<string>();
+      // When elevated (stack still has piece after lifting), the beetle sits atop
+      // the hive and moves freely across piece tops — no gate/sliding constraint.
+      const isElevated = (lifted.board[coordKey(lookup.at)]?.length ?? 0) > 0;
       for (const n of neighbors(lookup.at)) {
-        if (occupied(lifted.board, n) || gateOpen(lifted.board, lookup.at, n)) out.add(coordKey(n));
+        if (isElevated) {
+          out.add(coordKey(n));
+        } else {
+          // Ground level: can slide to empty (gate must be open) or climb onto occupied
+          if (occupied(lifted.board, n) || gateOpen(lifted.board, lookup.at, n)) out.add(coordKey(n));
+        }
       }
       return out;
     }

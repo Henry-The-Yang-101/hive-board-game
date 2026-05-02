@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { HiveBoard } from "@/components/board/HiveBoard";
+import { HiveBoard3D } from "@/components/board/HiveBoard3D";
 import { clearHiveSession, COLOR_KEY, LOBBY_KEY, SESSION_KEY } from "@/lib/hiveSession";
 import { socket } from "@/lib/socket";
 import { Action, GameState, PieceType, PlayerColor } from "@/game/types";
@@ -142,7 +142,7 @@ export function LobbyClient({ lobbyId }: Props) {
         </button>
         <button onClick={pass} disabled={!canPass}>Pass</button>
       </div>
-      <HiveBoard
+      <HiveBoard3D
         state={state}
         myColor={myColor}
         interactionMode={interactionMode}

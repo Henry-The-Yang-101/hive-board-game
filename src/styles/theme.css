@@ -37,12 +37,39 @@ button { cursor: pointer; }
 .themeBtn { position: fixed; top: 16px; right: 16px; }
 .topBar { display: flex; justify-content: space-between; padding: 14px; border-radius: 12px; margin-bottom: 12px; }
 .message { color: var(--muted); }
-.boardWrap { display: grid; gap: 12px; }
+.boardWrap { display: grid; gap: 14px; }
+.canvasWrapper {
+  width: 100%;
+  height: 560px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 20%, #1e2438 0%, #0f1117 70%);
+  border: 1px solid var(--border);
+}
+:root[data-theme="light"] .canvasWrapper {
+  background: radial-gradient(ellipse at 50% 20%, #d4ddf5 0%, #e8edf8 70%);
+}
 .boardActions { display: flex; gap: 10px; margin: 10px 0 14px; }
 .boardActions .activeAction { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
 .tray { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-.trayBtn { border-radius: 12px; padding: 10px; display: flex; align-items: center; justify-content: space-between; }
+.trayBtn {
+  border-radius: 12px;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
 .trayBtn.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.trayIcon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+/* invert dark-ink PNGs so they are visible in dark mode */
+:root[data-theme="dark"] .trayIcon { filter: invert(1); }
+.trayLabel { font-size: 11px; color: var(--muted); text-transform: capitalize; }
+.trayCount  { font-size: 14px; font-weight: 700; }
 .hexField {
   position: relative;
   margin: 0 auto;
