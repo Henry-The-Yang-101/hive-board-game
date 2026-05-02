@@ -16,6 +16,9 @@ const STACK_GAP = 0.04;  // vertical gap between stacked pieces
 const MARKER_R  = 0.70;  // radius of legal-move highlight disc
 const MARKER_H  = 0.07;
 
+/** Linear scale of insect art on piece tops (1 = edge-to-edge within square). */
+const INSECT_ON_PIECE_SCALE = 0.75;
+
 // ─── Color palette (matches CSS theme) ──────────────────────────────────────
 const W_SIDE  = new THREE.Color(0xdce4f5);
 const B_SIDE  = new THREE.Color(0x1c2235);
@@ -58,8 +61,12 @@ function processTexture(src: THREE.Texture, invert: boolean): THREE.Texture {
   const oh = img.naturalHeight || img.height || SIZE;
   const ar = ow / oh;
   let dw: number, dh: number, dx: number, dy: number;
-  if (ar >= 1) { dw = SIZE;      dh = SIZE / ar; dx = 0;             dy = (SIZE - dh) / 2; }
-  else         { dh = SIZE;      dw = SIZE * ar;  dx = (SIZE - dw) / 2; dy = 0;             }
+  if (ar >= 1) { dw = SIZE; dh = SIZE / ar; }
+  else         { dh = SIZE; dw = SIZE * ar; }
+  dw *= INSECT_ON_PIECE_SCALE;
+  dh *= INSECT_ON_PIECE_SCALE;
+  dx = (SIZE - dw) / 2;
+  dy = (SIZE - dh) / 2;
 
   ctx.clearRect(0, 0, SIZE, SIZE);
   ctx.fillStyle = "#ffffff";
