@@ -57,6 +57,8 @@ export function LobbyClient({ lobbyId }: Props) {
       applyRoleFromSnapshot(payload);
       setSelectedPieceId(null);
       setRoleReady(true);
+      if (payload.players.length === 1) setMessage("Waiting for opponent to join...");
+      else if (payload.players.length === 2) setMessage("Both players connected!");
     };
 
     const tryJoinFresh = () => {

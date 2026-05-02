@@ -47,6 +47,8 @@ export function registerSocketHandlers(io: Server<ClientToServerEvents, ServerTo
         });
         return;
       }
+      const player = lobby.players.find((p) => p.sessionId === sessionId);
+      if (player) socket.emit("lobbyJoined", { sessionId: player.sessionId, color: player.color });
       socket.join(lobbyId);
       io.to(lobbyId).emit("state", snapshot(lobby));
     });

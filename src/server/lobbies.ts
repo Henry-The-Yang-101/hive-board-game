@@ -64,9 +64,13 @@ export function snapshot(lobby: Lobby): { state: GameState; lobbyId: string; pla
 }
 
 export function removeSocket(socketId: string): void {
-  for (const [id, lobby] of lobbies.entries()) {
-    lobby.players = lobby.players.filter((p) => p.socketId !== socketId);
-    if (lobby.players.length === 0) lobbies.delete(id);
+  for (const lobby of lobbies.values()) {
+    for (const p of lobby.players) {
+      if (p.socketId === socketId) {
+        p.socketId = "";
+        lobby.updatedAt = Date.now();
+      }
+    }
   }
 }
 
