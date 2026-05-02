@@ -163,9 +163,14 @@ export function LobbyClient({ lobbyId }: Props) {
             disabled={!canInteract}
             onClick={() => selectTool("move")}
           >
-            <span className="trayMoveGlyph" aria-hidden>
-              ⇄
-            </span>
+            <Image
+              src="/images/misc/move_button.png"
+              alt="Move"
+              width={32}
+              height={32}
+              className="trayIcon"
+              style={{ objectFit: "contain" }}
+            />
             <span className="trayLabel">Move</span>
           </button>
           {SIDE_PIECES.map((piece) => {
