@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { HiveBoard3D, type HiveTool } from "@/components/board/HiveBoard3D";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { clearHiveSession, COLOR_KEY, LOBBY_KEY, SESSION_KEY } from "@/lib/hiveSession";
 import { socket } from "@/lib/socket";
 import { GameState, PieceType, PlayerColor } from "@/game/types";
@@ -141,21 +142,24 @@ export function LobbyClient({ lobbyId }: Props) {
     <main className="gameShell">
       <aside className="gameSidebar">
         <div className="sidebarInset">
+          <div className="sidebarInsetTop">
+            <h1 className="sidebarTitle">Hive</h1>
+            <ThemeToggle variant="icon" />
+          </div>
           <div className="sidebarStatus">
-          <h1 className="sidebarTitle">Hive</h1>
-          <p className="sidebarMeta">
-            Lobby <span className="sidebarMono">{lobbyId}</span>
-          </p>
-          <p className="sidebarMeta">Turn: {state.turn}</p>
-          <p className="sidebarMeta">Status: {state.status}</p>
-          <p className="sidebarMeta">
-            You: <span className="sidebarMono">{youLabel}</span>
-          </p>
-          <p className="message sidebarMessage">{message}</p>
-        </div>
+            <p className="sidebarMeta">
+              Lobby <span className="sidebarMono">{lobbyId}</span>
+            </p>
+            <p className="sidebarMeta">Turn: {state.turn}</p>
+            <p className="sidebarMeta">Status: {state.status}</p>
+            <p className="sidebarMeta">
+              You: <span className="sidebarMono">{youLabel}</span>
+            </p>
+            <p className="message sidebarMessage">{message}</p>
+          </div>
 
-        <div className="sidebarTrayLabel">Choose action</div>
-        <div className="sidebarTray">
+          <div className="sidebarTrayLabel">Choose action</div>
+          <div className="sidebarTray">
           <button
             type="button"
             className={`trayBtn ${tool === "move" ? "active" : ""}`}
@@ -197,7 +201,7 @@ export function LobbyClient({ lobbyId }: Props) {
               </button>
             );
           })}
-        </div>
+          </div>
         </div>
       </aside>
 
