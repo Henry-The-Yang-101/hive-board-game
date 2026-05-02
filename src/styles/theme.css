@@ -52,8 +52,19 @@ button { cursor: pointer; }
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
-.sidebarInsetTop .themeToggleIcon {
+.sidebarToolbar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
   flex-shrink: 0;
+}
+.sidebarToolbar .themeToggleIcon {
+  flex-shrink: 0;
+}
+.themeToggleIcon.themeToggleIconCopied {
+  border-color: color-mix(in oklab, var(--accent) 72%, var(--border));
+  color: var(--accent);
 }
 .themeToggleIcon svg {
   width: 18px;

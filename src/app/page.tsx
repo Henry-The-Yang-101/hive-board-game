@@ -21,7 +21,7 @@ export default function HomePage() {
     <main className="container home">
       <ThemeToggle />
       <section className="card">
-        <h1>Hive Private Lobbies</h1>
+        <h1>Hive Online!</h1>
         <p>Create a private two-player lobby and share the link.</p>
         <div className="row">
           <button onClick={createLobby}>Create lobby</button>

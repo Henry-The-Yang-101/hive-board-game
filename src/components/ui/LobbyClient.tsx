@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import type PartySocket from "partysocket";
 import usePartySocket from "partysocket/react";
 import { HiveBoard3D, type HiveTool } from "@/components/board/HiveBoard3D";
@@ -30,10 +31,31 @@ const TRAY_IMG: Record<PieceType, string> = {
 
 const SIDE_PIECES: PieceType[] = ["queen", "ant", "spider", "beetle", "grasshopper"];
 
+function LeaveLobbyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  );
+}
+
+function CopyLinkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect width="13" height="13" x="9" y="9" rx="2" ry="2" fill="none" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" fill="none" />
+    </svg>
+  );
+}
+
 export function LobbyClient({ lobbyId }: Props) {
+  const router = useRouter();
   const [state, setState] = useState<GameState>(initialState());
   const [tool, setTool] = useState<HiveTool>("queen");
   const [message, setMessage] = useState("Connecting...");
+  const [linkCopied, setLinkCopied] = useState(false);
   const [myColor, setMyColor] = useState<PlayerColor | null>(null);
   const [selectedPieceId, setSelectedPieceId] = useState<string | null>(null);
   const [roleReady, setRoleReady] = useState(false);
@@ -147,13 +169,65 @@ export function LobbyClient({ lobbyId }: Props) {
 
   const handTurn = state.hands[state.turn];
 
+  const leaveLobby = () => {
+    socket.close();
+    clearHiveSession();
+    localStorage.removeItem(LOBBY_KEY);
+    router.push("/");
+  };
+
+  const copyLobbyLink = async () => {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    try {
+      await navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+      window.setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = url;
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        setLinkCopied(true);
+        window.setTimeout(() => setLinkCopied(false), 2000);
+      } catch {
+        setMessage("Could not copy link. Copy from the browser address bar.");
+      }
+    }
+  };
+
   return (
     <main className="gameShell">
       <aside className="gameSidebar">
         <div className="sidebarInset">
           <div className="sidebarInsetTop">
             <h1 className="sidebarTitle">Hive</h1>
-            <ThemeToggle variant="icon" />
+            <div className="sidebarToolbar">
+              <button
+                type="button"
+                className="themeToggleIcon"
+                onClick={leaveLobby}
+                aria-label="Leave lobby"
+                title="Leave lobby"
+              >
+                <LeaveLobbyIcon />
+              </button>
+              <button
+                type="button"
+                className={`themeToggleIcon ${linkCopied ? "themeToggleIconCopied" : ""}`}
+                onClick={() => void copyLobbyLink()}
+                aria-label="Copy lobby link"
+                title="Copy lobby link"
+              >
+                <CopyLinkIcon />
+              </button>
+              <ThemeToggle variant="icon" />
+            </div>
           </div>
           <div className="sidebarStatus">
             <p className="sidebarMeta">
