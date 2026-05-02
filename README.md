@@ -1,7 +1,7 @@
 # Hive Online!
 
 Web-based two-player Hive implementation (base insects only).  
-  
+
 Play the deployed game with a friend at [https://hive-board-game.vercel.app/](https://hive-board-game.vercel.app/)!
 
 ## Features
@@ -53,10 +53,4 @@ Lobbies live in server memory (via PartyKit). After a server restart, old browse
   - **Spider**: Exactly three-step crawl.
   - **Soldier Ant**: Perimeter crawl with any distance.
 - **Win/Draw Detection**: Triggered when a queen is completely surrounded.
-
-## Test
-
-```bash
-npm run test
-```
 
