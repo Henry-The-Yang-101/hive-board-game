@@ -2,24 +2,19 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { COLOR_KEY, LOBBY_KEY, SESSION_KEY } from "@/lib/hiveSession";
-import { socket } from "@/lib/socket";
+import { clearHiveSession } from "@/lib/hiveSession";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 export default function HomePage() {
   const [joinId, setJoinId] = useState("");
-  const [error, setError] = useState("");
   const router = useRouter();
 
   const createLobby = () => {
-    socket.emit("createLobby");
-    socket.once("lobbyCreated", ({ lobbyId, sessionId, color }) => {
-      localStorage.setItem(SESSION_KEY, sessionId);
-      localStorage.setItem(COLOR_KEY, color);
-      localStorage.setItem(LOBBY_KEY, lobbyId);
-      router.push(`/lobby/${lobbyId}`);
-    });
-    socket.once("errorMessage", ({ message }) => setError(message));
+    // Generate a random lobby ID
+    const newLobbyId = Math.random().toString(36).substring(2, 11);
+    // Clear session so we join as the creator (white)
+    clearHiveSession();
+    router.push(`/lobby/${newLobbyId}`);
   };
 
   return (
@@ -33,7 +28,6 @@ export default function HomePage() {
           <input value={joinId} onChange={(e) => setJoinId(e.target.value)} placeholder="Paste lobby id" />
           <button onClick={() => router.push(`/lobby/${joinId.trim()}`)} disabled={!joinId.trim()}>Join</button>
         </div>
-        {error ? <p className="message">{error}</p> : null}
       </section>
     </main>
   );

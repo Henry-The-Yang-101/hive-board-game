@@ -124,6 +124,9 @@ out/
 # Vercel
 .vercel
 
+# PartyKit
+.partykit/
+
 # Debug & REPL
 .node_repl_history
 

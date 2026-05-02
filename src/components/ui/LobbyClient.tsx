@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import usePartySocket from "partysocket/react";
 import { HiveBoard3D, type HiveTool } from "@/components/board/HiveBoard3D";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { clearHiveSession, COLOR_KEY, LOBBY_KEY, SESSION_KEY } from "@/lib/hiveSession";
-import { socket } from "@/lib/socket";
 import { GameState, PieceType, PlayerColor } from "@/game/types";
 import { initialState, playerHasAnyMove } from "@/game/rules";
 
@@ -28,6 +28,9 @@ const TRAY_IMG: Record<PieceType, string> = {
 
 const SIDE_PIECES: PieceType[] = ["queen", "ant", "spider", "beetle", "grasshopper"];
 
+// Define host for PartyKit. Use localhost for development, or your deployed URL
+const PARTYKIT_HOST = process.env.NEXT_PUBLIC_PARTYKIT_HOST || "127.0.0.1:1999";
+
 export function LobbyClient({ lobbyId }: Props) {
   const [state, setState] = useState<GameState>(initialState());
   const [tool, setTool] = useState<HiveTool>("queen");
@@ -38,76 +41,72 @@ export function LobbyClient({ lobbyId }: Props) {
   const sessionFallbackUsed = useRef(false);
   const lastAutoPassKey = useRef<string | null>(null);
 
-  useEffect(() => {
-    const storedLobby = typeof window !== "undefined" ? localStorage.getItem(LOBBY_KEY) : null;
-    if (storedLobby && storedLobby !== lobbyId) {
-      clearHiveSession();
-    }
-    localStorage.setItem(LOBBY_KEY, lobbyId);
+  const applyRoleFromSnapshot = (payload: LobbySnapshot) => {
+    const sid = localStorage.getItem(SESSION_KEY);
+    if (!sid) return;
+    const me = payload.players.find((p) => p.sessionId === sid);
+    if (me) setMyColor(me.color);
+  };
 
-    const applyRoleFromSnapshot = (payload: LobbySnapshot) => {
-      const sid = localStorage.getItem(SESSION_KEY);
-      if (!sid) return;
-      const me = payload.players.find((p) => p.sessionId === sid);
-      if (me) setMyColor(me.color);
-    };
+  const tryJoinFresh = () => {
+    clearHiveSession();
+    sessionFallbackUsed.current = true;
+    setMessage("Starting a fresh session in this lobby…");
+    socket.send(JSON.stringify({ type: "joinLobby" }));
+  };
 
-    const onState = (payload: LobbySnapshot) => {
-      setState(payload.state);
-      applyRoleFromSnapshot(payload);
-      setSelectedPieceId(null);
-      setRoleReady(true);
-      if (payload.players.length === 1) setMessage("Waiting for opponent to join...");
-      else if (payload.players.length === 2) setMessage("Both players connected!");
-    };
+  const persistRole = (payload: { sessionId: string; color: PlayerColor }) => {
+    localStorage.setItem(SESSION_KEY, payload.sessionId);
+    localStorage.setItem(COLOR_KEY, payload.color);
+    setMyColor(payload.color);
+    setRoleReady(true);
+  };
 
-    const tryJoinFresh = () => {
-      clearHiveSession();
-      sessionFallbackUsed.current = true;
-      setMessage("Starting a fresh session in this lobby…");
-      socket.emit("joinLobby", { lobbyId });
-    };
-
-    const onError = (payload: { message: string; code?: string }) => {
-      setMessage(payload.message);
-      if (payload.code === "session_invalid" && !sessionFallbackUsed.current) {
-        tryJoinFresh();
+  const socket = usePartySocket({
+    host: PARTYKIT_HOST,
+    room: lobbyId,
+    onOpen() {
+      const storedLobby = typeof window !== "undefined" ? localStorage.getItem(LOBBY_KEY) : null;
+      if (storedLobby && storedLobby !== lobbyId) {
+        clearHiveSession();
       }
-    };
+      localStorage.setItem(LOBBY_KEY, lobbyId);
 
-    const persistRole = (payload: { sessionId: string; color: PlayerColor }) => {
-      localStorage.setItem(SESSION_KEY, payload.sessionId);
-      localStorage.setItem(COLOR_KEY, payload.color);
-      setMyColor(payload.color);
-      setRoleReady(true);
-    };
-
-    const onCreated = (payload: { sessionId: string; color: PlayerColor }) => {
-      persistRole(payload);
-      setMessage("Lobby created. Share the link to invite black.");
-    };
-
-    const onJoined = (payload: { sessionId: string; color: PlayerColor }) => {
-      persistRole(payload);
-      setMessage(payload.color === "white" ? "Reconnected as white." : "Joined as black.");
-    };
-
-    socket.on("state", onState);
-    socket.on("errorMessage", onError);
-    socket.on("lobbyCreated", onCreated);
-    socket.on("lobbyJoined", onJoined);
-
-    const sessionId = localStorage.getItem(SESSION_KEY);
-    if (sessionId) socket.emit("reconnectLobby", { lobbyId, sessionId });
-    else socket.emit("joinLobby", { lobbyId });
-
-    return () => {
-      socket.off("state", onState);
-      socket.off("errorMessage", onError);
-      socket.off("lobbyCreated", onCreated);
-      socket.off("lobbyJoined", onJoined);
-    };
-  }, [lobbyId]);
+      const sessionId = localStorage.getItem(SESSION_KEY);
+      if (sessionId) {
+        socket.send(JSON.stringify({ type: "reconnectLobby", sessionId }));
+      } else {
+        socket.send(JSON.stringify({ type: "joinLobby" }));
+      }
+    },
+    onMessage(e) {
+      const payload = JSON.parse(e.data);
+      switch (payload.type) {
+        case "state":
+          setState(payload.state);
+          applyRoleFromSnapshot(payload);
+          setSelectedPieceId(null);
+          setRoleReady(true);
+          if (payload.players.length === 1) setMessage("Waiting for opponent to join...");
+          else if (payload.players.length === 2) setMessage("Both players connected!");
+          break;
+        case "errorMessage":
+          setMessage(payload.message);
+          if (payload.code === "session_invalid" && !sessionFallbackUsed.current) {
+            tryJoinFresh();
+          }
+          break;
+        case "lobbyCreated":
+          persistRole(payload);
+          setMessage("Lobby created. Share the link to invite black.");
+          break;
+        case "lobbyJoined":
+          persistRole(payload);
+          setMessage(payload.color === "white" ? "Reconnected as white." : "Joined as black.");
+          break;
+      }
+    }
+  });
 
   useEffect(() => {
     if (!roleReady || !myColor || state.status !== "active") return;
@@ -116,18 +115,18 @@ export function LobbyClient({ lobbyId }: Props) {
     const marker = `${lobbyId}:${state.turnNumber}`;
     if (lastAutoPassKey.current === marker) return;
     lastAutoPassKey.current = marker;
-    socket.emit("playAction", { lobbyId, action: { kind: "pass" } });
-  }, [roleReady, myColor, lobbyId, state.status, state.turn, state.turnNumber]);
+    socket.send(JSON.stringify({ type: "playAction", action: { kind: "pass" } }));
+  }, [roleReady, myColor, lobbyId, state.status, state.turn, state.turnNumber, socket]);
 
   const placePieceType = tool === "move" ? null : tool;
 
   const placeAt = (q: number, r: number) => {
     if (placePieceType === null) return;
-    socket.emit("playAction", { lobbyId, action: { kind: "place", pieceType: placePieceType, to: { q, r } } });
+    socket.send(JSON.stringify({ type: "playAction", action: { kind: "place", pieceType: placePieceType, to: { q, r } } }));
   };
 
   const moveTo = (pieceId: string, q: number, r: number) => {
-    socket.emit("playAction", { lobbyId, action: { kind: "move", pieceId, to: { q, r } } });
+    socket.send(JSON.stringify({ type: "playAction", action: { kind: "move", pieceId, to: { q, r } } }));
   };
 
   const selectTool = (next: HiveTool) => {
