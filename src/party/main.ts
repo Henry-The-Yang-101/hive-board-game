@@ -4,6 +4,10 @@ import { GameState, PlayerColor, Action } from "../game/types";
 
 type LobbyPlayer = { connectionId: string; sessionId: string; color: PlayerColor };
 
+function generateId() {
+  return Math.random().toString(36).substring(2, 15);
+}
+
 export default class Server implements Party.Server {
   engine: HiveEngine;
   players: LobbyPlayer[] = [];
@@ -13,7 +17,15 @@ export default class Server implements Party.Server {
   }
 
   onMessage(message: string, sender: Party.Connection) {
-    const data = JSON.parse(message);
+    let data;
+    try {
+      data = JSON.parse(message);
+    } catch (e) {
+      console.error("Failed to parse message", message);
+      return;
+    }
+
+    console.log(`Message from ${sender.id}:`, data.type);
 
     switch (data.type) {
       case "joinLobby": {
@@ -25,13 +37,13 @@ export default class Server implements Party.Server {
 
         if (this.players.length === 0) {
           // First player is white
-          const sessionId = crypto.randomUUID();
+          const sessionId = generateId();
           this.players.push({ connectionId: sender.id, sessionId, color: "white" });
           sender.send(JSON.stringify({ type: "lobbyCreated", lobbyId: this.room.id, sessionId, color: "white" }));
           this.broadcastState();
         } else if (this.players.length === 1) {
           // Second player is black
-          const sessionId = crypto.randomUUID();
+          const sessionId = generateId();
           this.players.push({ connectionId: sender.id, sessionId, color: "black" });
           sender.send(JSON.stringify({ type: "lobbyJoined", sessionId, color: "black" }));
           this.broadcastState();
