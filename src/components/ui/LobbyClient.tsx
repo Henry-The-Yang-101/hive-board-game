@@ -213,7 +213,7 @@ export function LobbyClient({ lobbyId }: Props) {
       <aside className="gameSidebar">
         <div className="sidebarInset">
           <div className="sidebarInsetTop">
-            <h1 className="sidebarTitle">Hive</h1>
+            <h1 className="sidebarTitle">Hive Online!</h1>
             <div className="sidebarToolbar">
               <button
                 type="button"
