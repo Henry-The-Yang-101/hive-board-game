@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import type PartySocket from "partysocket";
 import usePartySocket from "partysocket/react";
 import { HiveBoard3D, type HiveTool } from "@/components/board/HiveBoard3D";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { getPartyKitHost } from "@/lib/partykitHost";
 import { clearHiveSession, COLOR_KEY, LOBBY_KEY, SESSION_KEY } from "@/lib/hiveSession";
 import { GameState, PieceType, PlayerColor } from "@/game/types";
 import { initialState, playerHasAnyMove } from "@/game/rules";
@@ -28,9 +30,6 @@ const TRAY_IMG: Record<PieceType, string> = {
 
 const SIDE_PIECES: PieceType[] = ["queen", "ant", "spider", "beetle", "grasshopper"];
 
-// Define host for PartyKit. Use localhost for development, or your deployed URL
-const PARTYKIT_HOST = process.env.NEXT_PUBLIC_PARTYKIT_HOST || "127.0.0.1:1999";
-
 export function LobbyClient({ lobbyId }: Props) {
   const [state, setState] = useState<GameState>(initialState());
   const [tool, setTool] = useState<HiveTool>("queen");
@@ -40,6 +39,7 @@ export function LobbyClient({ lobbyId }: Props) {
   const [roleReady, setRoleReady] = useState(false);
   const sessionFallbackUsed = useRef(false);
   const lastAutoPassKey = useRef<string | null>(null);
+  const socketRef = useRef<PartySocket | null>(null);
 
   const applyRoleFromSnapshot = (payload: LobbySnapshot) => {
     const sid = localStorage.getItem(SESSION_KEY);
@@ -52,7 +52,7 @@ export function LobbyClient({ lobbyId }: Props) {
     clearHiveSession();
     sessionFallbackUsed.current = true;
     setMessage("Starting a fresh session in this lobby…");
-    socket.send(JSON.stringify({ type: "joinLobby" }));
+    socketRef.current?.send(JSON.stringify({ type: "joinLobby" }));
   };
 
   const persistRole = (payload: { sessionId: string; color: PlayerColor }) => {
@@ -63,7 +63,7 @@ export function LobbyClient({ lobbyId }: Props) {
   };
 
   const socket = usePartySocket({
-    host: PARTYKIT_HOST,
+    host: getPartyKitHost(),
     room: lobbyId,
     onOpen() {
       const storedLobby = typeof window !== "undefined" ? localStorage.getItem(LOBBY_KEY) : null;
@@ -78,6 +78,12 @@ export function LobbyClient({ lobbyId }: Props) {
       } else {
         socket.send(JSON.stringify({ type: "joinLobby" }));
       }
+    },
+    onClose() {
+      setMessage("Disconnected from lobby server. Is PartyKit running and NEXT_PUBLIC_PARTYKIT_HOST correct?");
+    },
+    onError() {
+      setMessage("Could not connect to PartyKit. Use hostname only (no https://)—e.g. my-app.mygithubuser.partykit.dev—and redeploy Vercel after setting env.");
     },
     onMessage(e) {
       const payload = JSON.parse(e.data);
@@ -107,6 +113,8 @@ export function LobbyClient({ lobbyId }: Props) {
       }
     }
   });
+
+  socketRef.current = socket;
 
   useEffect(() => {
     if (!roleReady || !myColor || state.status !== "active") return;

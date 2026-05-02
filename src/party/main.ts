@@ -1,6 +1,6 @@
 import type * as Party from "partykit/server";
 import { HiveEngine } from "../game/engine";
-import { GameState, PlayerColor, Action } from "../game/types";
+import { PlayerColor, Action } from "../game/types";
 
 type LobbyPlayer = { connectionId: string; sessionId: string; color: PlayerColor };
 
@@ -14,6 +14,10 @@ export default class Server implements Party.Server {
 
   constructor(readonly room: Party.Room) {
     this.engine = new HiveEngine();
+  }
+
+  onConnect(connection: Party.Connection) {
+    console.log("party onConnect", { room: this.room.id, connectionId: connection.id });
   }
 
   onMessage(message: string, sender: Party.Connection) {
