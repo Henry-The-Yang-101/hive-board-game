@@ -15,6 +15,7 @@ const HEX_MESH_Y_ROT = Math.PI / 6;
 const HEX_TILE_GAP = 0.05;
 const PIECE_H   = 0.55;
 const PIECE_EDGE_BEVEL = 0.026 * 1.8;
+const SIDE_EDGE_ROUND = Math.min(PIECE_EDGE_BEVEL * 0.95, HEX_R * HEX_SCALE * 0.33);
 const STACK_GAP = 0.05;
 const MARKER_R  = 0.70;
 const MARKER_H  = 0.07;
@@ -75,22 +76,54 @@ function remapTopCapUVsCylinderStyle(
   uvAttr.needsUpdate = true;
 }
 
-function createRoundedHexPieceGeometry(): THREE.BufferGeometry {
-  const r = HEX_R * HEX_SCALE;
-  const shape = new THREE.Shape();
+/** Horizontal hex outline with circular corners → extruded vertical ribs become rounded side seams. */
+function roundedHexShape(R: number, cornerRadius: number): THREE.Shape {
+  const verts: THREE.Vector2[] = [];
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * Math.PI * 2;
-    const x = r * Math.cos(a);
-    const y = r * Math.sin(a);
-    if (i === 0) shape.moveTo(x, y);
-    else shape.lineTo(x, y);
+    verts.push(new THREE.Vector2(R * Math.cos(a), R * Math.sin(a)));
   }
-  shape.closePath();
+  const rc = Math.min(cornerRadius, R * 0.33);
+  const tanLen = rc / Math.sqrt(3);
+  const toCenter = rc / Math.sin(Math.PI / 3);
+
+  const shape = new THREE.Shape();
+  let first = true;
+
+  for (let i = 0; i < 6; i++) {
+    const V = verts[i]!;
+    const Vp = verts[(i + 5) % 6]!;
+    const Vn = verts[(i + 1) % 6]!;
+    const dirIn = new THREE.Vector2().subVectors(V, Vp).normalize();
+    const dirOut = new THREE.Vector2().subVectors(Vn, V).normalize();
+    const P_start = new THREE.Vector2().copy(V).sub(dirIn.clone().multiplyScalar(tanLen));
+    const P_end = new THREE.Vector2().copy(V).add(dirOut.clone().multiplyScalar(tanLen));
+    const O = V.clone().normalize().multiplyScalar(V.length() - toCenter);
+
+    const a0 = Math.atan2(P_start.y - O.y, P_start.x - O.x);
+    const a1 = Math.atan2(P_end.y - O.y, P_end.x - O.x);
+    let da = a1 - a0;
+    while (da <= -Math.PI) da += 2 * Math.PI;
+    while (da > Math.PI) da -= 2 * Math.PI;
+
+    if (first) {
+      shape.moveTo(P_start.x, P_start.y);
+      first = false;
+    }
+    shape.absarc(O.x, O.y, rc, a0, a0 + da, da < 0);
+  }
+
+  return shape;
+}
+
+function createRoundedHexPieceGeometry(): THREE.BufferGeometry {
+  const r = HEX_R * HEX_SCALE;
+  const shape = roundedHexShape(r, SIDE_EDGE_ROUND);
 
   const geo = new THREE.ExtrudeGeometry(shape, {
     depth: PIECE_H - 2 * PIECE_EDGE_BEVEL,
     steps: 1,
-    curveSegments: 1,
+    curveSegments: 12,
     bevelEnabled: true,
     bevelThickness: PIECE_EDGE_BEVEL,
     bevelSize: PIECE_EDGE_BEVEL * 0.9,
