@@ -1,41 +1,61 @@
-# Hive Private Lobby
+# Hive Online!
 
 Web-based two-player Hive implementation (base insects only) with private invite links.
 
 ## Features
 
-- Private lobbies with unguessable links
-- Two-player cap (host + guest)
-- Base Hive insects: queen bee, soldier ant, spider, beetle, grasshopper
-- Server-authoritative game state and rule validation
-- Light/dark theme toggle
-- Clean SVG icons (no emoji)
+- **Private Lobbies**: Create unguessable links to invite friends.
+- **Real-time Gameplay**: Powered by PartyKit for low-latency synchronization.
+- **Responsive 3D Board**: Immersive Three.js/React Three Fiber board that works on desktop and mobile.
+- **Mobile Optimized**: Bottom-sheet controls and adaptive layout for smaller screens.
+- **UI/UX Polish**:
+  - Montserrat typography for a modern look.
+  - Light/dark theme toggle with persistent settings.
+  - Toolbar with "Leave Lobby" and "Copy Link" functionality.
+  - Simplified "Move" and "Place" tool hierarchy.
+- **Base Hive Insects**: Queen Bee, Soldier Ant, Spider, Beetle, Grasshopper.
+- **Server-Authoritative**: Game state and rule validation handled on the server.
 
 ## Run
 
+To run the project locally, you need to start both the Next.js frontend and the PartyKit server:
+
 ```bash
+# Install dependencies
 npm install
+
+# Start the frontend (Next.js)
 npm run dev
+
+# Start the backend (PartyKit)
+npm run party
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Sessions and dev restarts
+## Deployment
 
-Lobbies live in server memory. After you stop and start `npm run dev`, old browser session data may be invalid; the client will clear it and join the lobby again when possible. If that lobby no longer exists, create a new one.
+To deploy the PartyKit server:
+
+```bash
+npm run party:deploy
+```
+
+## Sessions and Dev Restarts
+
+Lobbies live in server memory (via PartyKit). After a server restart, old browser session data may be invalid; the client will clear it and join the lobby again when possible. If a lobby no longer exists, simply create a new one.
 
 ## Rules Implemented
 
-- Queen must be placed by each player's fourth turn
-- Pieces can only be placed adjacent to own hive and not touching opponent pieces (after opening)
-- One-hive rule on movement
-- Movement constraints per insect:
-  - Queen: one step slide
-  - Beetle: one step, can climb stacks
-  - Grasshopper: straight-line jump over contiguous pieces
-  - Spider: exactly three-step crawl
-  - Soldier ant: perimeter crawl with any distance
-- Win/draw detection when queen is surrounded
+- **Placement**: Queen must be placed by each player's fourth turn. Pieces can only be placed adjacent to own hive and not touching opponent pieces (after opening).
+- **One-Hive Rule**: The hive must always remain connected.
+- **Movement Constraints**:
+  - **Queen**: One step slide.
+  - **Beetle**: One step, can climb stacks.
+  - **Grasshopper**: Straight-line jump over contiguous pieces.
+  - **Spider**: Exactly three-step crawl.
+  - **Soldier Ant**: Perimeter crawl with any distance.
+- **Win/Draw Detection**: Triggered when a queen is completely surrounded.
 
 ## Test
 
