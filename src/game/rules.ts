@@ -166,7 +166,7 @@ function crawlTargets(
   return new Set(Array.from(out).filter((k) => k !== coordKey(from)));
 }
 
-function movableTopPiece(state: GameState, pieceId: string): { piece: Piece; at: HexCoord } | null {
+export function movableTopPiece(state: GameState, pieceId: string): { piece: Piece; at: HexCoord } | null {
   for (const [k, stack] of Object.entries(state.board)) {
     if (!stack.length) continue;
     if (stack[stack.length - 1].id === pieceId) return { piece: stack[stack.length - 1], at: parseKey(k) };

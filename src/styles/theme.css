@@ -107,7 +107,10 @@ button { cursor: pointer; }
   overflow-y: auto;
 }
 .sidebarInset {
-  border: 1px solid color-mix(in oklab, var(--border) 42%, transparent);
+  border: 1px solid color-mix(in oklab, var(--border) 85%, transparent);
+  background: color-mix(in oklab, var(--bg-soft) 65%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: 12px;
   padding: 12px;
   display: flex;

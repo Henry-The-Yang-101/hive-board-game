@@ -10,7 +10,7 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { getPartyKitHost } from "@/lib/partykitHost";
 import { clearHiveSession, COLOR_KEY, LOBBY_KEY, SESSION_KEY } from "@/lib/hiveSession";
 import { GameState, PieceType, PlayerColor } from "@/game/types";
-import { initialState, playerHasAnyMove } from "@/game/rules";
+import { initialState, movableTopPiece, playerHasAnyMove } from "@/game/rules";
 
 type Props = { lobbyId: string };
 
@@ -164,6 +164,23 @@ export function LobbyClient({ lobbyId }: Props) {
     setSelectedPieceId(null);
   };
 
+  const selectPieceForMove = (pieceId: string | null) => {
+    if (pieceId === null) {
+      setSelectedPieceId(null);
+      return;
+    }
+    if (myColor === null) {
+      setSelectedPieceId(pieceId);
+      return;
+    }
+    const lookup = movableTopPiece(state, pieceId);
+    if (lookup && lookup.piece.owner !== myColor) {
+      setMessage("Cannot move opponent piece.");
+      return;
+    }
+    setSelectedPieceId(pieceId);
+  };
+
   const colorLabel = (c: PlayerColor) => (c === "white" ? "White" : "Black");
 
   let turnLine: string;
@@ -297,7 +314,7 @@ export function LobbyClient({ lobbyId }: Props) {
           myColor={myColor}
           tool={tool}
           selectedPieceId={selectedPieceId}
-          onSelectPieceId={setSelectedPieceId}
+          onSelectPieceId={selectPieceForMove}
           onPlace={placeAt}
           onMove={moveTo}
         />
